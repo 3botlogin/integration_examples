@@ -1,2 +1,4 @@
-# example_php
-Implementation example in php
+# Integrations of 3botlogin 
+Implementation examples in:
+* php
+* python
