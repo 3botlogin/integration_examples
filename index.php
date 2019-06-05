@@ -1,15 +1,17 @@
 <?php
+//Example for integrating 3botlogin into PHP
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 session_start();
 
 function generateRandomString($length = 10) {
-    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $charactersLength = strlen($characters);
     $randomString = '';
     for ($i = 0; $i < $length; $i++) {
-        $randomString .= $characters[rand(0, $charactersLength - 1)];
+        $randomString .= $characters[random_int(0, $charactersLength - 1)];
     }
     return $randomString;
 }
@@ -55,7 +57,7 @@ $_SESSION['MYKEYS'] = $myKeys;
 $_SESSION['MYPUB'] = $myPub;
 
 $_SESSION['MYSEC'] = $mySec;
-$state = generateRandomString();
+$state = generateRandomString(30);
 $_SESSION['STATE'] =  $state;
 
 try {
@@ -66,7 +68,9 @@ catch (exception $e) {
     print_r($e);
 }
 
-
-$redir =  "https://login.threefold.me?state=$state$&scope=user:email&appid=phpiseasy&publickey=$myPubEd&redirecturl=http://localhost:9000?callback=1";
+$stateenc = urlencode($state);
+$mypubenc = urlencode($myPubEd);
+$redir =  "http://localhost:8080?state=$stateenc$&scope=user:email&appid=phpiseasy&publickey=$mypubenc&redirecturl=http://localhost:9000?callback=1";
+//echo $redir;
 
 header("location: $redir");
