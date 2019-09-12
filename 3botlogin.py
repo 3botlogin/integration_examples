@@ -34,9 +34,10 @@ def randomString(stringLength=10):
 
 @app.route('/')
 def hello():
-    state = randomString()
+    scope = { "doubleName" : True, "email" : False }
+    state = '8bef7f47030e05cf63a33102a8d153a9c6bc155f3a0b6883ef6ab763d17d5cd5'
     res = flask.make_response(redirect(
-        'https://login.threefold.me/?state={}&scope=user:email&appid=pythoniseasy&publickey={}&redirecturl=http://localhost:5000/callback'.format(state, urllib.parse.quote_plus(pkb64))))
+        'https://login.threefold.me/?&scope={}&appid=localhost:5000&publickey={}&redirecturl=/callback&state={}'.format(scope, urllib.parse.quote_plus(pkb64), state)))
     res.set_cookie("state", value=state)
     return res
 

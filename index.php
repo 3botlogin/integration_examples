@@ -27,10 +27,15 @@ if(isset($_GET['callback'])){
     $signedHash = $_GET['signedhash'];
     $user = json_decode(file_get_contents("https://login.threefold.me/api/users/$doublename"));
 
+    $data =json_decode($_GET['data']);
+    $nonce = base64_decode($data->nonce);
+    $ciphertext = base64_decode($data->ciphertext);
+
     printj("Welcome dear $doublename. <br>");
 
     $statecontrol = sodium_crypto_sign_open(base64_decode($signedHash),base64_decode($user->publicKey));
 
+    printj($statecontrol);
 
     if(substr($statecontrol, 0,-1) != $_SESSION['STATE']){
         printj("YOU ARE A HACKER SIGNATURE INVALID");
@@ -57,7 +62,7 @@ $_SESSION['MYKEYS'] = $myKeys;
 $_SESSION['MYPUB'] = $myPub;
 
 $_SESSION['MYSEC'] = $mySec;
-$state = generateRandomString(30);
+$state = '8bef7f47030e05cf63a33102a8d153a9c6bc155f3a0b6883ef6ab763d17d5cd5';
 $_SESSION['STATE'] =  $state;
 
 try {
@@ -70,7 +75,9 @@ catch (exception $e) {
 
 $stateenc = urlencode($state);
 $mypubenc = urlencode($myPubEd);
-$redir =  "http://localhost:8080?state=$stateenc$&scope=user:email&appid=phpiseasy&publickey=$mypubenc&redirecturl=http://localhost:9000?callback=1";
+$scopeenc = json_encode([ "doubleName" => true, "email" => false ]);
+$appid = "localhost:8000";
+$redir =  "http://login.threefold.me/?appid=$appid&scope=$scopeenc&publickey=$mypubenc&redirecturl=?callback=1?&state=$stateenc";
 //echo $redir;
 
 header("location: $redir");
