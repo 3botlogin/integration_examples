@@ -70,7 +70,6 @@ class ThreebotController < ApplicationController
     rescue RbNaCl::BadSignatureError
          return render json: {"message": "'Login Timeout! or Login attempt not recognized! Have you waited too long before login?"}, status: 401
     end
-    byebug
     begin
         decrypted = JSON.load(RbNaCl::Box.new(userPublicKeyCurve.to_s, secrtKeyCurve.to_s).open(nonce, cipherText))
         email = decrypted[:email][:email]
