@@ -73,3 +73,6 @@ go build threebot.go
 ./threebot
  ```
 
+## Rails
+
+- [See here](ruby/README.md)
