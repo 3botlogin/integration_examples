@@ -1,25 +1,21 @@
 require "base64"
 require 'securerandom'
 require 'net/http'
-require "json"
+require 'json'
+
 require 'rbnacl'
 
 
 class ThreebotController < ApplicationController
  @@authUrl = 'https://login.threefold.me'
- @@seed = "aKQ1v9QAy9iq1o3ZwASnxvfLKtIEHp0="
- @@keyPair = "hhWKUbjuUjLKzxtzZB3pvf/61GDVah0f0wiCLd7BsH0=" # Base64.encode64(RbNaCl::SigningKey.generate.to_s).strip
+ @@privateKey = RbNaCl::PrivateKey.generate
 
  def login
-
-    signingKey = RbNaCl::SigningKey.new(Base64.decode64(@@keyPair))
-    verify_key = signingKey.verify_key
-    verify_key_curve = Base64.encode64(RbNaCl::PublicKey.new(verify_key).to_s).strip
-
+    public_key = Base64.strict_encode64(@@privateKey.public_key.to_bytes)
     defaultParams = {
-        :appid => '127.0.0.1:9000',
+        :appid => '127.0.0.1:3000',
         :scope => JSON.generate({:user=> true, :email => true}),
-        :publickey => verify_key_curve,
+        :publickey => public_key,
         :redirecturl => '/callback',
         :state => "19ce2ddb8f2f1e712133f7800d2e8dc4" #SecureRandom.hex
     }
@@ -36,7 +32,7 @@ class ThreebotController < ApplicationController
 
 
 
-    signedhash =  Base64.decode64(params[:signedhash])
+    signedhash =  Base64.strict_decode64(params[:signedhash])
     username =  params[:username]
     data = JSON.load(params[:data])
 
@@ -44,15 +40,8 @@ class ThreebotController < ApplicationController
         return render json: {}, status: 400
     end
 
-    Rails.logger.warn data
-
-    nonce = Base64.decode64(data["nonce"])
-    cipherText = Base64.decode64(data["ciphertext"])
-    signingKey = RbNaCl::SigningKey.new(Base64.decode64(@@keyPair))
-    secrtKey = signingKey.trust.to_s
-    secrtKeyCurve = RbNaCl::PrivateKey.new(secrtKey)
-
-    # get user pub key
+    nonce = Base64.strict_decode64(data["nonce"])
+    cipherText = Base64.strict_decode64(data["ciphertext"])
 
     net = Net::HTTP.new("login.threefold.me", 443)
     net.use_ssl = true
@@ -61,17 +50,19 @@ class ThreebotController < ApplicationController
         return render json: {"message": "can not get public key for user"}, status: res.code
     end
 
-    userPublicKey = Base64.decode64(JSON.load(res.body)["publicKey"])
-    userPublicKeyObj = RbNaCl::VerifyKey.new(userPublicKey)
-    userPublicKeyCurve = RbNaCl::PublicKey.new(userPublicKey)
+    userPublicKey = Base64.strict_decode64(JSON.load(res.body)["publicKey"])
+    pk = RbNaCl::PublicKey.new(userPublicKey)
+    userPublicKeyObj = RbNaCl::VerifyKey.new(pk)
 
     begin
         userPublicKeyObj.verify(signedhash[0..63], "19ce2ddb8f2f1e712133f7800d2e8dc4") #session[:authState])
     rescue RbNaCl::BadSignatureError
          return render json: {"message": "'Login Timeout! or Login attempt not recognized! Have you waited too long before login?"}, status: 401
     end
+
+    binding.pry
     begin
-        decrypted = JSON.load(RbNaCl::Box.new(userPublicKeyCurve.to_s, secrtKeyCurve.to_s).open(nonce, cipherText))
+        decrypted = JSON.load(RbNaCl::Box.new(RbNaCl::PublicKey.new(pk), @@privateKey).decrypt(nonce, cipherText[0..63]))
         email = decrypted[:email][:email]
         verified = decrypted[:email][:verified]
         Rails.logger.warn '*****'
